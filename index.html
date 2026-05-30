@@ -8,6 +8,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.1/firebase-storage-compat.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -43,16 +46,8 @@
                     <button type="submit" id="authBtnNode" class="btn-primary-full dynamic-click">
                         <span data-en="Verify & Connect" data-ar="تحقق واتصل بالنظام">Verify & Connect</span> <i class="fa-solid fa-arrow-right"></i>
                     </button>
-</form>
-        </div>
-    </div>
-
-    <script src="app.js"></script>
-    <script src="analytics.js"></script>
-    <script src="kanban.js"></script>
-    <script src="workspace.js"></script>
-</body>
-</html>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -74,9 +69,9 @@
                 <button class="nav-btn" data-target="gantt" type="button">
                     <i class="fa-solid fa-timeline"></i> <span data-en="Gantt Chart" data-ar="مخطط غانت">Gantt Chart</span>
                 </button>
-                <button class="nav-btn private-ws-btn" data-target="privateWorkspace" type="button">
+                <a href="private-workspace.html" class="nav-btn" style="text-decoration: none;">
                     <i class="fa-solid fa-user-lock"></i> <span data-en="My Private Zone" data-ar="مساحتي الخاصة">My Private Zone</span>
-                </button>
+                </a>
                 <button class="nav-btn" data-target="adminAnalytics" type="button">
                     <i class="fa-solid fa-chart-line"></i> <span data-en="Analytics Desk" data-ar="منصة التحليلات">Analytics Desk</span>
                 </button>
@@ -121,29 +116,41 @@
 
             <div class="sections-container">
                 
-                <section id="dashboard" class="view-section active">
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-icon" style="background: rgba(74,108,247,0.1); color: #4a6cf7;"><i class="fa-solid fa-layer-group"></i></div>
-                            <div class="stat-info"><h3 id="statTotalTasks">0</h3><p data-en="Total Shared Tasks" data-ar="إجمالي المهام">Total Shared Tasks</p></div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-icon" style="background: rgba(46,204,113,0.1); color: #2ecc71;"><i class="fa-solid fa-square-check"></i></div>
-                            <div class="stat-info"><h3 id="statCompletedTasks">0</h3><p data-en="Completed Metrics" data-ar="المهام المكتملة">Completed Metrics</p></div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-icon" style="background: rgba(231,76,60,0.1); color: #e74c3c;"><i class="fa-solid fa-hourglass-alert"></i></div>
-                            <div class="stat-info"><h3 id="statDelayedTasks">0</h3><p data-en="Schedules Breached" data-ar="مخططات متأخرة">Schedules Breached</p></div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-icon" style="background: rgba(241,196,15,0.1); color: #f1c40f;"><i class="fa-solid fa-bolt"></i></div>
-                            <div class="stat-info"><h3 id="statCompletionRate">0%</h3><p data-en="Productivity Output" data-ar="معدل الإنتاجية">Productivity Output</p></div>
-                        </div>
-                    </div>
+<section id="dashboard" class="view-section active">
+<div class="stats-grid" id="dashboardStatsGrid">
+                          <div class="stat-card">
+                              <div class="stat-icon" style="background: rgba(74,108,247,0.1); color: #4a6cf7;"><i class="fa-solid fa-layer-group"></i></div>
+                              <div class="stat-info"><h3 id="statTotalTasks">0</h3><p data-en="Total Shared Tasks" data-ar="إجمالي المهام">Total Shared Tasks</p></div>
+                          </div>
+                          <div class="stat-card">
+                              <div class="stat-icon" style="background: rgba(46,204,113,0.1); color: #2ecc71;"><i class="fa-solid fa-square-check"></i></div>
+                              <div class="stat-info"><h3 id="statCompletedTasks">0</h3><p data-en="Completed Metrics" data-ar="المهام المكتملة">Completed Metrics</p></div>
+                          </div>
+                          <div class="stat-card">
+                              <div class="stat-icon" style="background: rgba(231,76,60,0.1); color: #e74c3c;"><i class="fa-solid fa-hourglass-alert"></i></div>
+                              <div class="stat-info"><h3 id="statDelayedTasks">0</h3><p data-en="Schedules Breached" data-ar="مخططات متأخرة">Schedules Breached</p></div>
+                          </div>
+                          <div class="stat-card">
+                              <div class="stat-icon" style="background: rgba(241,196,15,0.1); color: #f1c40f;"><i class="fa-solid fa-bolt"></i></div>
+                              <div class="stat-info"><h3 id="statCompletionRate">0%</h3><p data-en="Productivity Output" data-ar="معدل الإنتاجية">Productivity Output</p></div>
+                          </div>
+                          <div class="stat-card">
+                              <div class="stat-icon" style="background: rgba(14,165,233,0.1); color: #0ea5e9;"><i class="fa-solid fa-folder"></i></div>
+                              <div class="stat-info"><h3 id="statTotalModules">0</h3><p data-en="Total Projects" data-ar="إجمالي المشاريع">Total Projects</p><small id="statActiveModules" style="font-size: 10px; color: var(--text-muted);">0 active</small></div>
+                          </div>
+                          <div class="stat-card">
+                              <div class="stat-icon" style="background: rgba(231,76,60,0.1); color: #e74c3c;"><i class="fa-solid fa-sprint"></i></div>
+                              <div class="stat-info"><h3 id="statTotalSprints">0</h3><p data-en="Total Sprints" data-ar="إجمالي السبرينتات">Total Sprints</p><small id="statActiveSprints" style="font-size: 10px; color: var(--text-muted);">0 active</small></div>
+                          </div>
+                          <div class="stat-card">
+                              <div class="stat-icon" style="background: rgba(139,92,246,0.1); color: #8b5cf6;"><i class="fa-solid fa-toggle-on"></i></div>
+                              <div class="stat-info"><h3 id="statActiveTasks">0</h3><p data-en="Active Tasks" data-ar="المهام المفعلة">Active Tasks</p><small id="statInactiveTasks" style="font-size: 10px; color: var(--text-muted);">0 inactive</small></div>
+                          </div>
+                          <div id="myTasksCardContainer"></div>
+                      </div>
 
                     <div class="dashboard-split-layout">
                         <div class="split-left-panel">
-                            <div id="myTasksContainer"></div>
                             
                             <div class="content-card framework-showcase-card">
                                 <div class="card-header-actions" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
@@ -153,31 +160,44 @@
                                     </button>
                                 </div>
                                 
-                                <div id="typesList" class="modules-grid-layout">
-                                    </div>
+                                <div id="typesList" class="modules-grid-layout"></div>
                             </div>
                         </div>
                         
                         <div class="split-right-panel">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+                                <div class="stat-card" style="cursor: default;">
+                                    <div class="stat-icon" style="background: rgba(74,108,247,0.1); color: #4a6cf7;"><i class="fa-solid fa-folder"></i></div>
+                                    <div class="stat-info"><h3 id="statTotalModules">0</h3><p data-en="Total Modules" data-ar="عدد المشاريع">Total Modules</p></div>
+                                </div>
+                                <div class="stat-card" style="cursor: default;">
+                                    <div class="stat-icon" style="background: rgba(241,196,15,0.1); color: #f1c40f;"><i class="fa-solid fa-sprint"></i></div>
+                                    <div class="stat-info"><h3 id="statTotalSprints">0</h3><p data-en="Total Sprints" data-ar="عدد السبرينتات">Total Sprints</p></div>
+                                </div>
+                            </div>
                             <div class="content-card highlight-glow">
                                 <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 15px;"><i class="fa-solid fa-chart-simple" style="color: #2ecc71;"></i> <span data-en="Module Task Volume" data-ar="كثافة توزيع مهام المشاريع">Module Task Volume</span></h3>
-                                <div class="chart-frame" style="position: relative; height: 220px;"><canvas id="weeklyChart"></canvas></div>
+                                <div class="chart-frame" style="position: relative; height: 180px;"><canvas id="weeklyChart"></canvas></div>
                             </div>
                             <div class="content-card">
                                 <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 15px;"><i class="fa-solid fa-clipboard-list" style="color: #f1c40f;"></i> <span data-en="Shared Scratchpad" data-ar="المسودة المشتركة">Shared Scratchpad</span></h3>
-                                <textarea id="stickyNote" style="min-height: 120px; border-radius: 8px; border: 1px solid var(--border-color); padding: 12px; resize: none; font-family: inherit; font-size: 0.9rem;" data-placeholder-en="Write logs synced across system users..." data-placeholder-ar="اكتب الملاحظات ليتم مشاركتها وتزامنها مع باقي المستخدمين..." placeholder="Write logs synced across system users..."></textarea>
+                                <textarea id="stickyNote" style="min-height: 100px; border-radius: 8px; border: 1px solid var(--border-color); padding: 12px; resize: none; font-family: inherit; font-size: 0.9rem;" data-placeholder-en="Write logs synced across system users..." data-placeholder-ar="اكتب الملاحظات ليتم مشاركتها وتزامنها مع باقي المستخدمين..." placeholder="Write logs synced across system users..."></textarea>
                             </div>
                         </div>
                     </div>
                 </section>
 
-                <section id="kanban" class="view-section" style="display: none;">
-                    <div class="kanban-control-strip">
-                        <div class="filter-group">
-                            <label for="kanbanTypeFilter"><i class="fa-solid fa-filter"></i> <span data-en="Module Filter:" data-ar="تصفية بالمشروع:">Module Filter:</span></label>
-                            <select id="kanbanTypeFilter" onchange="renderKanbanBoard()" class="select-styled"></select>
-                        </div>
-                    </div>
+<section id="kanban" class="view-section" style="display: none;">
+                     <div class="kanban-control-strip">
+                         <div class="filter-group">
+                             <label for="kanbanTypeFilter"><i class="fa-solid fa-filter"></i> <span data-en="Module Filter:" data-ar="تصفية بالمشروع:">Module Filter:</span></label>
+                             <select id="kanbanTypeFilter" onchange="renderKanbanBoard()" class="select-styled"></select>
+                         </div>
+                         <div class="filter-group">
+                             <label for="sprintFilter"><i class="fa-solid fa-sprint"></i> <span data-en="Sprint Filter:" data-ar="تصفية بالسبرينت:">Sprint Filter:</span></label>
+                             <select id="sprintFilter" onchange="renderKanbanBoard()" class="select-styled"></select>
+                         </div>
+                     </div>
                     <div class="kanban-stats-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px;">
                         <div class="kanban-stat-card" onclick="filterKanbanByStatus('todo')" style="background: var(--bg-surface); border: 1px solid var(--border-color); border-top: 4px solid var(--text-muted); border-radius: 8px; padding: 15px; text-align: center; cursor: pointer;">
                             <h4 style="font-size: 24px; font-weight: 700; color: var(--text-muted);" id="kanbanStatTodo">0</h4>
@@ -190,6 +210,10 @@
                         <div class="kanban-stat-card" onclick="filterKanbanByStatus('review')" style="background: var(--bg-surface); border: 1px solid var(--border-color); border-top: 4px solid var(--accent-orange); border-radius: 8px; padding: 15px; text-align: center; cursor: pointer;">
                             <h4 style="font-size: 24px; font-weight: 700; color: var(--accent-orange);" id="kanbanStatReview">0</h4>
                             <p style="font-size: 12px; color: var(--text-muted);" data-en="Pending Review" data-ar="قيد المراجعة">Pending Review</p>
+                        </div>
+                        <div class="kanban-stat-card" onclick="filterKanbanByStatus('pending-after-rejection')" style="background: var(--bg-surface); border: 1px solid var(--border-color); border-top: 4px solid var(--warning); border-radius: 8px; padding: 15px; text-align: center; cursor: pointer;">
+                            <h4 style="font-size: 24px; font-weight: 700; color: var(--warning);" id="kanbanStatPendingAfterRejection">0</h4>
+                            <p style="font-size: 12px; color: var(--text-muted);" data-en="Re-validation Required" data-ar="قيد إعادة التصديق">Re-validation Required</p>
                         </div>
                         <div class="kanban-stat-card" onclick="filterKanbanByStatus('done')" style="background: var(--bg-surface); border: 1px solid var(--border-color); border-top: 4px solid var(--success); border-radius: 8px; padding: 15px; text-align: center; cursor: pointer;">
                             <h4 style="font-size: 24px; font-weight: 700; color: var(--success);" id="kanbanStatDone">0</h4>
@@ -204,43 +228,16 @@
                         <div class="kanban-column"><div class="kanban-column-header text-todo"><span data-en="To Do" data-ar="للتنفيذ">To Do</span><span class="column-count" id="count-todo">0</span></div><div id="tasks-todo" class="kanban-dropzone"></div></div>
                         <div class="kanban-column"><div class="kanban-column-header text-doing"><span data-en="In Progress" data-ar="قيد العمل">In Progress</span><span class="column-count" id="count-doing">0</span></div><div id="tasks-doing" class="kanban-dropzone"></div></div>
                         <div class="kanban-column"><div class="kanban-column-header text-review"><span data-en="Pending Review" data-ar="قيد المراجعة">Pending Review</span><span class="column-count" id="count-review">0</span></div><div id="tasks-review" class="kanban-dropzone"></div></div>
+                        <div class="kanban-column"><div class="kanban-column-header" style="border-top: 4px solid var(--warning);"><span data-en="Re-validation Required" data-ar="قيد إعادة التصديق">Re-validation Required</span><span class="column-count" id="count-pending-after-rejection">0</span></div><div id="tasks-pending-after-rejection" class="kanban-dropzone"></div></div>
                         <div class="kanban-column"><div class="kanban-column-header text-done"><span data-en="Completed" data-ar="مكتمل">Completed</span><span class="column-count" id="count-done-status">0</span></div><div id="tasks-done" class="kanban-dropzone"></div></div>
                         <div class="kanban-column"><div class="kanban-column-header" style="border-top: 4px solid #e74c3c;"><span data-en="Rejected" data-ar="مرفوض">Rejected</span><span class="column-count" id="count-rejected">0</span></div><div id="tasks-rejected" class="kanban-dropzone"></div></div>
                     </div>
-                </section>
-
                 </section>
 
                 <section id="gantt" class="view-section" style="display: none;">
                     <div class="content-card">
                         <h3><i class="fa-solid fa-chart-gantt"></i> <span data-en="Operational Architecture Timeline" data-ar="الجدول الزمني لهندسة العمليات">Operational Architecture Timeline</span></h3>
                         <div class="chart-frame-large"><canvas id="ganttChart"></canvas></div>
-                    </div>
-                </section>
-
-                <section id="privateWorkspace" class="view-section" style="display: none;">
-                    <div class="private-banner-card">
-                        <h2><i class="fa-solid fa-user-shield"></i> <span data-en="Isolated Vault (Private Segment)" data-ar="الخزنة المنعزلة (المساحة السرية الخاصة)">Isolated Vault (Private Segment)</span></h2>
-                        <p data-en="Data stored here is encrypted to your user passport profile and hidden from everyone else." data-ar="البيانات المخزنة هنا مشفرة ومرتبطة بملفك التعريفي فقط ولا يمكن لأي مستخدم آخر رؤيتها مطلقاً.">Data stored here is encrypted to your user passport profile and hidden from everyone else.</p>
-                    </div>
-                    <div class="dashboard-split-layout margin-top-20">
-                        <div class="split-left-panel">
-                            <div class="content-card">
-                                <div class="card-header-actions" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                                    <h3><i class="fa-solid fa-folder-key"></i> <span data-en="My Private Modules" data-ar="مشاريعي السرية الخاصة">My Private Modules</span></h3>
-                                    <button class="btn-primary-sm" style="background-color: var(--accent-orange);" onclick="openModuleForm(true)" type="button">
-                                        <i class="fa-solid fa-folder-plus"></i> <span data-en="Add Private Module" data-ar="إضافة مشروع سري">Add Private Module</span>
-                                    </button>
-                                </div>
-                                <div id="privateTypesList" class="modules-stack"></div>
-                            </div>
-                        </div>
-                        <div class="split-right-panel">
-                            <div class="content-card">
-                                <h3><i class="fa-solid fa-user-lock"></i> <span data-en="Private Workspace Overview" data-ar="نظرة عامة على المساحة الخاصة">Private Workspace Overview</span></h3>
-                                <p style="font-size: 13px; color: var(--text-muted);" data-en="Use actions inside the private modules to attach personal tasks. Drag/drop and filtering are fully supported within your private view." data-ar="استخدم الأزرار داخل المشاريع الخاصة لإضافة مهام شخصية. لوحة كانبان والتصفية تدعم تلقائياً وضعك الحالي.">Use actions inside the private modules to attach personal tasks. Drag/drop and filtering are fully supported within your private view.</p>
-                            </div>
-                        </div>
                     </div>
                 </section>
 
@@ -316,10 +313,10 @@
                     </div>
                 </section>
 
-            </div> 
+            </div>
         </main>
-    </div> 
-    
+    </div>
+
     <div id="taskModal" class="modal-overlay" style="display: none;">
         <div class="modal-box">
             <div class="modal-header">
@@ -378,7 +375,7 @@
                 <input type="hidden" id="typeId">
                 <input type="hidden" id="typeIsPrivate" value="false">
                 
-<div class="form-group">
+                <div class="form-group">
                     <label data-en="Module Title *" data-ar="اسم المشروع / القسم *">Module Title *</label>
                     <input type="text" id="typeName" required data-placeholder-en="e.g., Real Estate BI Dashboard" data-placeholder-ar="مثال: لوحة تحليلات العقارات" placeholder="e.g., Real Estate BI Dashboard">
                 </div>
@@ -390,7 +387,7 @@
                     <label data-en="Module Color" data-ar="لون المشروع">Module Color</label>
                     <input type="color" id="typeColor" value="#4a6cf7">
                 </div>
-                 
+                
                 <div class="modal-footer-actions">
                     <button type="button" class="btn-secondary" onclick="closeModal('typeModal')" data-en="Abort" data-ar="إلغاء">Abort</button>
                     <button type="submit" class="btn-primary" data-en="Save Module" data-ar="حفظ المشروع">Save Module</button>
@@ -432,11 +429,11 @@
                     </div>
                 </div>
                 
-<div class="form-group">
+                <div class="form-group">
                     <label data-en="Sprint Color" data-ar="لون السبرينت">Sprint Color</label>
                     <input type="color" id="sprintColor" value="#4a6cf7">
                 </div>
-                 
+                
                 <div class="modal-footer-actions">
                     <button type="button" class="btn-secondary" onclick="closeModal('sprintModal')" data-en="Abort" data-ar="إلغاء">Abort</button>
                     <button type="submit" class="btn-primary" data-en="Save Sprint" data-ar="حفظ السبرينت">Save Sprint</button>
@@ -445,6 +442,7 @@
         </div>
     </div>
 
+    <script src="storage-firebase.js"></script>
     <script src="app.js"></script>
     <script src="analytics.js"></script>
     <script src="kanban.js"></script>

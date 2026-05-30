@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskVibe Pro - Private Workspace</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="loginScreen" class="auth-overlay">
+        <div class="auth-card animated-fade-in">
+            <div class="auth-glow-effect"></div>
+            <div style="text-align: center; padding: 40px;">
+                <i class="fa-solid fa-user-shield" style="font-size: 48px; color: var(--primary); margin-bottom: 20px;"></i>
+                <h3 style="margin-bottom: 10px;">Redirecting to Private Workspace...</h3>
+                <p style="color: var(--text-muted);">You will be redirected automatically.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="appDashboardLayout" class="app-layout" style="display: none;">
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <i class="fa-solid fa-cubes"></i>
+                <span>TaskVibe Pro</span>
+            </div>
+            <nav class="sidebar-menu">
+                <a href="index.html" class="nav-btn" style="text-decoration: none;">
+                    <i class="fa-solid fa-arrow-left"></i> <span>Back to Shared</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-meta-box">
+                    <i class="fa-solid fa-fingerprint"></i>
+                    <span id="currentLoggedUser">---</span>
+                </div>
+                <button class="btn-logout" onclick="handleLogout()" type="button">
+                    <i class="fa-solid fa-power-off"></i> Disconnect
+                </button>
+            </div>
+        </aside>
+
+        <main class="main-wrapper">
+            <header class="app-header">
+                <div class="header-left">
+                    <div class="search-bar-container">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="globalSearch" placeholder="Search private tasks...">
+                    </div>
+                </div>
+                <div class="header-right">
+                    <button id="themeToggle" class="action-circle-btn" type="button"><i class="fa-solid fa-moon"></i></button>
+                </div>
+            </header>
+
+            <div class="sections-container">
+                <section id="privateDashboard" class="view-section active">
+                    <div class="private-banner-card">
+                        <h2><i class="fa-solid fa-user-shield"></i> Private Workspace</h2>
+                        <p>Personal projects, sprints, and tasks - isolated from shared workspace</p>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: rgba(74,108,247,0.1); color: #4a6cf7;"><i class="fa-solid fa-folder"></i></div>
+                            <div class="stat-info"><h3 id="statTotalProjects">0</h3><p>Total Projects</p></div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: rgba(231,76,60,0.1); color: #e74c3c;"><i class="fa-solid fa-sprint"></i></div>
+                            <div class="stat-info"><h3 id="statTotalSprints">0</h3><p>Total Sprints</p></div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: rgba(46,204,113,0.1); color: #2ecc71;"><i class="fa-solid fa-list"></i></div>
+                            <div class="stat-info"><h3 id="statTotalTasks">0</h3><p>Total Tasks</p></div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-split-layout">
+                        <div class="split-left-panel">
+                            <div class="content-card framework-showcase-card">
+                                <div class="card-header-actions" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+                                    <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600;"><i class="fa-solid fa-folder-closed" style="color: #4a6cf7; margin-right: 8px;"></i> My Private Projects</h3>
+                                    <button class="btn-primary-sm" onclick="openPrivateModuleForm()" type="button" style="border-radius: 6px; padding: 6px 14px;">
+                                        <i class="fa-solid fa-plus"></i> New Project
+                                    </button>
+                                </div>
+                                <div id="privateModulesList" class="modules-grid-layout"></div>
+                            </div>
+                        </div>
+
+                        <div class="split-right-panel">
+                            <div class="content-card highlight-glow">
+                                <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 15px;"><i class="fa-solid fa-chart-simple" style="color: #2ecc71;"></i> Task Distribution</h3>
+                                <div class="chart-frame" style="position: relative; height: 180px;"><canvas id="privateChart"></canvas></div>
+                            </div>
+                            <div class="content-card margin-top-20">
+                                <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 15px;"><i class="fa-solid fa-plus"></i> Quick Add Task</h3>
+                                <button class="btn-primary-sm" onclick="openPrivateTaskForm()" style="width: 100%; height: 40px;">
+                                    <i class="fa-solid fa-plus"></i> Add New Task (No Sprint Required)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="privateKanban" class="view-section" style="display: none;">
+                    <div class="kanban-control-strip">
+                        <div class="filter-group">
+                            <label for="privateModuleFilter"><i class="fa-solid fa-filter"></i> Project Filter:</label>
+                            <select id="privateModuleFilter" onchange="renderPrivateKanbanBoard()" class="select-styled"></select>
+                        </div>
+                    </div>
+                    <div class="kanban-stats-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px;">
+                        <div class="kanban-stat-card" style="background: var(--bg-surface); border: 1px solid var(--border-color); border-top: 4px solid var(--text-muted); border-radius: 8px; padding: 15px; text-align: center;">
+                            <h4 style="font-size: 24px; font-weight: 700; color: var(--text-muted);" id="p-kanbanStatTodo">0</h4>
+                            <p style="font-size: 12px; color: var(--text-muted);">To Do</p>
+                        </div>
+                        <div class="kanban-stat-card" style="background: var(--bg-surface); border: 1px solid var(--border-color); border-top: 4px solid var(--warning); border-radius: 8px; padding: 15px; text-align: center;">
+                            <h4 style="font-size: 24px; font-weight: 700; color: var(--warning);" id="p-kanbanStatDoing">0</h4>
+                            <p style="font-size: 12px; color: var(--text-muted);">In Progress</p>
+                        </div>
+                        <div class="kanban-stat-card" style="background: var(--bg-surface); border: 1px solid var(--border-color); border-top: 4px solid var(--success); border-radius: 8px; padding: 15px; text-align: center;">
+                            <h4 style="font-size: 24px; font-weight: 700; color: var(--success);" id="p-kanbanStatDone">0</h4>
+                            <p style="font-size: 12px; color: var(--text-muted);">Completed</p>
+                        </div>
+                        <div class="kanban-stat-card" style="background: var(--bg-surface); border: 1px solid var(--border-color); border-top: 4px solid var(--danger); border-radius: 8px; padding: 15px; text-align: center;">
+                            <h4 style="font-size: 24px; font-weight: 700; color: var(--danger);" id="p-kanbanStatRejected">0</h4>
+                            <p style="font-size: 12px; color: var(--text-muted);">Rejected</p>
+                        </div>
+                    </div>
+                    <div class="kanban-canvas">
+                        <div class="kanban-column"><div class="kanban-column-header text-todo"><span>To Do</span><span class="column-count" id="p-count-todo">0</span></div><div id="p-tasks-todo" class="kanban-dropzone"></div></div>
+                        <div class="kanban-column"><div class="kanban-column-header text-doing"><span>In Progress</span><span class="column-count" id="p-count-doing">0</span></div><div id="p-tasks-doing" class="kanban-dropzone"></div></div>
+                        <div class="kanban-column"><div class="kanban-column-header text-done"><span>Completed</span><span class="column-count" id="p-count-done">0</span></div><div id="p-tasks-done" class="kanban-dropzone"></div></div>
+                        <div class="kanban-column"><div class="kanban-column-header" style="border-top: 4px solid #e74c3c;"><span>Rejected</span><span class="column-count" id="p-count-rejected">0</span></div><div id="p-tasks-rejected" class="kanban-dropzone"></div></div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <div id="privateModuleModal" class="modal-overlay" style="display: none;">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 id="privateModuleModalTitle"><i class="fa-solid fa-folder"></i> Add Project</h3>
+                <button class="close-modal-btn" onclick="closeModal('privateModuleModal')" type="button">&times;</button>
+            </div>
+            <form id="privateModuleForm" onsubmit="handlePrivateModuleSubmit(event)">
+                <input type="hidden" id="privateModuleId">
+                <div class="form-group">
+                    <label>Project Title *</label>
+                    <input type="text" id="privateModuleName" required placeholder="e.g., Personal Project">
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="privateModuleNotes" rows="2" placeholder="Project description..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Project Color</label>
+                    <input type="color" id="privateModuleColor" value="#4a6cf7">
+                </div>
+                <div class="modal-footer-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('privateModuleModal')">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Project</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="privateTaskModal" class="modal-overlay" style="display: none;">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 id="privateTaskModalTitle"><i class="fa-solid fa-square-pen"></i> Add Task</h3>
+                <button class="close-modal-btn" onclick="closeModal('privateTaskModal')" type="button">&times;</button>
+            </div>
+            <form id="privateTaskForm" onsubmit="handlePrivateTaskSubmit(event)">
+                <input type="hidden" id="privateTaskId">
+                <input type="hidden" id="privateTaskModuleId">
+                <div class="form-group">
+                    <label>Task Title *</label>
+                    <input type="text" id="privateTaskName" required placeholder="Task title...">
+                </div>
+                <div class="form-group">
+                    <label>Project</label>
+                    <select id="privateTaskProject" class="select-styled"></select>
+                </div>
+                <div class="form-group">
+                    <label>Sprint (Optional)</label>
+                    <select id="privateTaskSprint" class="select-styled"></select>
+                </div>
+                <div class="form-group">
+                    <label>Visual Accent Color</label>
+                    <input type="color" id="privateTaskColor" value="#4a6cf7">
+                </div>
+                <div class="form-group">
+                    <label>Milestone Deadline</label>
+                    <input type="datetime-local" id="privateTaskDueDate">
+                </div>
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea id="privateTaskNotes" rows="3" placeholder="Task notes..."></textarea>
+                </div>
+                <div class="modal-footer-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('privateTaskModal')">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="privateSprintModal" class="modal-overlay" style="display: none;">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-sprint"></i> <span id="privateSprintModalTitle">Add Sprint</span></h3>
+                <button class="close-modal-btn" onclick="closeModal('privateSprintModal')" type="button">&times;</button>
+            </div>
+            <form id="privateSprintForm" onsubmit="handlePrivateSprintSubmit(event)">
+                <input type="hidden" id="privateSprintId">
+                <input type="hidden" id="privateSprintModuleId">
+                <div class="form-group">
+                    <label>Sprint Name *</label>
+                    <input type="text" id="privateSprintName" required placeholder="Sprint name...">
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="privateSprintDescription" rows="2" placeholder="Sprint description..."></textarea>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div class="form-group">
+                        <label>Start Date</label>
+                        <input type="date" id="privateSprintStartDate">
+                    </div>
+                    <div class="form-group">
+                        <label>End Date</label>
+                        <input type="date" id="privateSprintEndDate">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Sprint Color</label>
+                    <input type="color" id="privateSprintColor" value="#4a6cf7">
+                </div>
+                <div class="modal-footer-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('privateSprintModal')">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Sprint</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="storage-firebase.js"></script>
+    <script src="app.js"></script>
+    <script>
+        let privateUserCode = null;
+        let privateState = { types: [], sprints: [], tasks: [] };
+
+        // Initialize on page load - use current session from main app
+        document.addEventListener("DOMContentLoaded", function() {
+            // Try to get user code from main app's localStorage
+            const mainAppState = localStorage.getItem("taskvibe_pro_v3_core");
+            if (mainAppState) {
+                try {
+                    const state = JSON.parse(mainAppState);
+                    // Get the current user's access code
+                    const currentUser = state.currentUser;
+                    if (currentUser) {
+                        // Find the code for current user
+                        const userEntry = Object.keys(state.accessRegistry || {}).find(key => 
+                            state.accessRegistry[key].name === currentUser
+                        );
+                        if (userEntry) {
+                            privateUserCode = currentUser;
+                            initializePrivateWorkspace();
+                            return;
+                        }
+                    }
+                } catch(e) {}
+            }
+            // Fallback: redirect to main login
+            window.location.href = "index.html";
+        });
+
+        function initializePrivateWorkspace() {
+            document.getElementById("loginScreen").style.display = "none";
+            document.getElementById("appDashboardLayout").style.display = "flex";
+            document.getElementById("currentLoggedUser").innerText = privateUserCode;
+            loadPrivateState();
+            renderPrivateWorkspace();
+        }
+
+        function loadPrivateState() {
+            const vaultKey = `taskvibe_vault_${privateUserCode}`;
+            const vault = localStorage.getItem(vaultKey);
+            if (vault) privateState = JSON.parse(vault);
+            else {
+                privateState = { types: [], sprints: [], tasks: [] };
+                localStorage.setItem(vaultKey, JSON.stringify(privateState));
+            }
+        }
+
+        function savePrivateState() {
+            const vaultKey = `taskvibe_vault_${privateUserCode}`;
+            localStorage.setItem(vaultKey, JSON.stringify(privateState));
+        }
+
+        function renderPrivateWorkspace() {
+            document.getElementById("statTotalProjects").innerText = privateState.types.length;
+            document.getElementById("statTotalSprints").innerText = privateState.sprints.length;
+            document.getElementById("statTotalTasks").innerText = privateState.tasks.length;
+
+            const container = document.getElementById("privateModulesList");
+            container.innerHTML = "";
+
+            privateState.types.forEach(module => {
+                const moduleTasks = privateState.tasks.filter(t => t.typeId === module.id);
+                const moduleSprints = privateState.sprints.filter(s => s.typeId === module.id);
+
+                container.innerHTML += `
+                    <div class="module-card" style="border-left: 4px solid ${module.color}; background: var(--bg-surface); border-radius: 10px; margin-bottom: 20px; border: 1px solid var(--border-color);">
+                        <div style="padding: 14px; border-bottom: 3px solid ${module.color}; display: flex; justify-content: space-between; align-items: center;">
+                            <h3 style="margin: 0; font-size: 16px; color: ${module.color};"><i class="fa-solid fa-folder"></i> ${module.name}</h3>
+                            <div style="display: flex; gap: 6px;">
+                                <button class="btn-primary-sm" onclick="openPrivateSprintForm(null, '${module.id}')" style="background: var(--success);"><i class="fa-solid fa-sprint"></i> Sprint</button>
+                                <button class="btn-primary-sm" onclick="openPrivateTaskFormForModule('${module.id}')" style="background: var(--primary);"><i class="fa-solid fa-plus"></i> Task</button>
+                                <button class="btn-primary-sm" onclick="openPrivateKanbanBoard()" style="background: var(--info);"><i class="fa-solid fa-table-columns"></i> Kanban</button>
+                            </div>
+                        </div>
+                        <div style="padding: 0 14px;">
+                            ${module.notes ? `<p style="padding: 8px 0; color: var(--text-muted); font-size: 12px;">${module.notes}</p>` : ''}
+                            <div style="padding: 10px 0;">
+                                <h4 style="font-size: 13px; margin: 6px 0 8px; color: var(--text-muted);"><i class="fa-solid fa-sprint" style="margin-right: 6px;"></i> Sprints (${moduleSprints.length})</h4>
+                                ${moduleSprints.map(s => `<div style="padding: 8px; border: 1px dashed ${s.color}; margin: 8px 0; border-radius: 6px; cursor: pointer;" onclick="openPrivateKanbanBoard()"><strong style="color: ${s.color};">${s.name}</strong></div>`).join('') || '<p style="font-size: 12px; color: var(--text-muted);">No sprints</p>'}
+                            </div>
+                            <div style="padding: 10px 0; border-top: 1px dashed var(--border-color);">
+                                <h4 style="font-size: 13px; margin: 6px 0 8px; color: var(--text-muted);"><i class="fa-solid fa-circle-dot" style="margin-right: 6px;"></i> Direct Tasks (${moduleTasks.filter(t => !t.sprintId).length})</h4>
+                                ${moduleTasks.filter(t => !t.sprintId).map(t => `<div style="border-top: 3px solid ${module.color}; margin: 6px 0; padding: 8px; background: var(--bg-surface); border-radius: 4px; cursor: pointer;" onclick="openPrivateKanbanBoard()"><span>${t.name}</span> - <span class="status-${t.status}">${t.status}</span></div>`).join('') || '<p style="font-size: 12px; color: var(--text-muted);">No direct tasks</p>'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function openPrivateKanbanBoard() {
+            document.getElementById("privateDashboard").classList.remove("active");
+            document.getElementById("privateDashboard").style.display = "none";
+            document.getElementById("privateKanban").classList.add("active");
+            document.getElementById("privateKanban").style.display = "block";
+            populatePrivateModuleFilter();
+            renderPrivateKanbanBoard();
+        }
+
+        function populatePrivateModuleFilter() {
+            const select = document.getElementById("privateModuleFilter");
+            select.innerHTML = "<option value='all'>All Projects</option>";
+            privateState.types.forEach(m => select.innerHTML += `<option value="${m.id}">${m.name}</option>`);
+        }
+
+        function renderPrivateKanbanBoard() {
+            const moduleFilter = document.getElementById("privateModuleFilter").value;
+            const query = document.getElementById("globalSearch").value.toLowerCase();
+            const tracks = { todo: [], doing: [], done: [], rejected: [] };
+
+            privateState.tasks.forEach(task => {
+                if (moduleFilter !== "all" && task.typeId !== moduleFilter) return;
+                if (query && !task.name.toLowerCase().includes(query) && !task.notes.toLowerCase().includes(query)) return;
+                if (tracks[task.status]) tracks[task.status].push(task);
+            });
+
+            ['todo', 'doing', 'done', 'rejected'].forEach(status => {
+                const column = document.getElementById(`p-tasks-${status}`);
+                const count = document.getElementById(`p-kanbanStat${status.charAt(0).toUpperCase() + status.slice(1)}`);
+                if (column) column.innerHTML = "";
+                if (count) count.innerText = tracks[status].length;
+
+                tracks[status].forEach(task => {
+                    const module = privateState.types.find(m => m.id === task.typeId);
+                    const color = task.customColor || (module ? module.color : '#4a6cf7');
+                    column.innerHTML += `
+                        <div class="task-card-agile" data-id="${task.id}" style="border-top: 4px solid ${color}; position: relative; cursor: pointer;">
+                            <div style="display:flex; justify-content:space-between; align-items:start;">
+                                <h4 style="font-size:13px; font-weight:600;">${task.name}</h4>
+                            </div>
+                            <p style="font-size:11px; color:var(--text-muted); margin:4px 0;">${module ? module.name : ''}</p>
+                            <p class="task-card-notes">${task.notes || ''}</p>
+                            <div class="task-footer-meta">
+                                <span><i class="fa-solid fa-clock"></i> ${task.dueDate ? task.dueDate.split("T")[0] : '-'}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+
+            initializePrivateKanbanSortable();
+        }
+
+        let privateKanbanInitialized = false;
+        function initializePrivateKanbanSortable() {
+            if (privateKanbanInitialized) return;
+            privateKanbanInitialized = true;
+            
+            ['p-tasks-todo', 'p-tasks-doing', 'p-tasks-done', 'p-tasks-rejected'].forEach(pipeId => {
+                const el = document.getElementById(pipeId);
+                if (el) {
+                    Sortable.create(el, {
+                        group: 'private-kanban',
+                        animation: 180,
+                        onEnd: (evt) => {
+                            const taskId = evt.item.getAttribute("data-id");
+                            const statusDestination = evt.to.id.replace("p-tasks-", "");
+                            updatePrivateTaskStatus(taskId, statusDestination);
+                        }
+                    });
+                }
+            });
+        }
+
+        function updatePrivateTaskStatus(taskId, targetStatus) {
+            const taskIndex = privateState.tasks.findIndex(t => t.id === taskId);
+            if (taskIndex > -1) {
+                privateState.tasks[taskIndex].status = targetStatus;
+                savePrivateState();
+                renderPrivateKanbanBoard();
+            }
+        }
+
+        function openPrivateModuleForm() {
+            document.getElementById("privateModuleId").value = "";
+            document.getElementById("privateModuleName").value = "";
+            document.getElementById("privateModuleNotes").value = "";
+            document.getElementById("privateModuleColor").value = "#4a6cf7";
+            document.getElementById("privateModuleModalTitle").innerHTML = '<i class="fa-solid fa-folder-plus"></i> Add Project';
+            openModal('privateModuleModal');
+        }
+
+        function handlePrivateModuleSubmit(event) {
+            event.preventDefault();
+            const id = document.getElementById("privateModuleId").value;
+            const name = document.getElementById("privateModuleName").value.trim();
+            const notes = document.getElementById("privateModuleNotes").value.trim();
+            const color = document.getElementById("privateModuleColor").value;
+            if (!name) return;
+            if (id) {
+                const idx = privateState.types.findIndex(m => m.id === id);
+                if (idx > -1) { privateState.types[idx].name = name; privateState.types[idx].notes = notes; privateState.types[idx].color = color; }
+            } else {
+                privateState.types.push({ id: "mod_" + Date.now(), name, notes, color });
+            }
+            savePrivateState();
+            closeModal('privateModuleModal');
+            renderPrivateWorkspace();
+        }
+
+        function openPrivateSprintForm(sprintId, moduleId) {
+            document.getElementById("privateSprintId").value = sprintId || "";
+            document.getElementById("privateSprintModuleId").value = moduleId || "";
+            document.getElementById("privateSprintName").value = "";
+            document.getElementById("privateSprintDescription").value = "";
+            document.getElementById("privateSprintStartDate").value = "";
+            document.getElementById("privateSprintEndDate").value = "";
+            document.getElementById("privateSprintColor").value = "#4a6cf7";
+            document.getElementById("privateSprintModalTitle").innerText = sprintId ? "Edit Sprint" : "Add Sprint";
+            openModal('privateSprintModal');
+        }
+
+        function handlePrivateSprintSubmit(event) {
+            event.preventDefault();
+            const id = document.getElementById("privateSprintId").value;
+            const moduleId = document.getElementById("privateSprintModuleId").value;
+            const name = document.getElementById("privateSprintName").value.trim();
+            const notes = document.getElementById("privateSprintDescription").value.trim();
+            const startDate = document.getElementById("privateSprintStartDate").value;
+            const endDate = document.getElementById("privateSprintEndDate").value;
+            const color = document.getElementById("privateSprintColor").value;
+            if (!name) return;
+            if (id) {
+                const idx = privateState.sprints.findIndex(s => s.id === id);
+                if (idx > -1) { privateState.sprints[idx].name = name; privateState.sprints[idx].notes = notes; privateState.sprints[idx].startDate = startDate; privateState.sprints[idx].endDate = endDate; privateState.sprints[idx].color = color; }
+            } else {
+                privateState.sprints.push({ id: "spr_" + Date.now(), typeId: moduleId, name, notes, startDate, endDate, color });
+            }
+            savePrivateState();
+            closeModal('privateSprintModal');
+            renderPrivateWorkspace();
+        }
+
+        function openPrivateTaskForm() {
+            populatePrivateProjectSelect();
+            populatePrivateSprintSelect();
+            document.getElementById("privateTaskId").value = "";
+            document.getElementById("privateTaskModuleId").value = "";
+            document.getElementById("privateTaskName").value = "";
+            document.getElementById("privateTaskDueDate").value = "";
+            document.getElementById("privateTaskNotes").value = "";
+            document.getElementById("privateTaskColor").value = "#4a6cf7";
+            document.getElementById("privateTaskModalTitle").innerHTML = '<i class="fa-solid fa-plus"></i> Add Task';
+            openModal('privateTaskModal');
+        }
+
+        function openPrivateTaskFormForModule(moduleId) {
+            populatePrivateProjectSelect();
+            populatePrivateSprintSelect();
+            document.getElementById("privateTaskId").value = "";
+            document.getElementById("privateTaskModuleId").value = moduleId;
+            document.getElementById("privateTaskName").value = "";
+            document.getElementById("privateTaskDueDate").value = "";
+            document.getElementById("privateTaskNotes").value = "";
+            document.getElementById("privateTaskColor").value = "#4a6cf7";
+            document.getElementById("privateTaskModalTitle").innerHTML = '<i class="fa-solid fa-plus"></i> Add Task';
+            openModal('privateTaskModal');
+        }
+
+        function handlePrivateTaskSubmit(event) {
+            event.preventDefault();
+            const id = document.getElementById("privateTaskId").value;
+            const moduleId = document.getElementById("privateTaskModuleId").value || document.getElementById("privateTaskProject").value;
+            const sprintId = document.getElementById("privateTaskSprint").value || null;
+            const name = document.getElementById("privateTaskName").value.trim();
+            const dueDate = document.getElementById("privateTaskDueDate").value;
+            const notes = document.getElementById("privateTaskNotes").value.trim();
+            const color = document.getElementById("privateTaskColor").value;
+            if (!name) return;
+            if (id) {
+                const idx = privateState.tasks.findIndex(t => t.id === id);
+                if (idx > -1) { privateState.tasks[idx].name = name; privateState.tasks[idx].typeId = moduleId; privateState.tasks[idx].sprintId = sprintId; privateState.tasks[idx].dueDate = dueDate; privateState.tasks[idx].notes = notes; privateState.tasks[idx].customColor = color; }
+            } else {
+                privateState.tasks.push({ id: "task_" + Date.now(), typeId: moduleId, sprintId, name, status: "todo", dueDate, notes, customColor: color });
+            }
+            savePrivateState();
+            closeModal('privateTaskModal');
+            renderPrivateWorkspace();
+            if (document.getElementById("privateKanban").classList.contains("active")) renderPrivateKanbanBoard();
+        }
+
+        function populatePrivateProjectSelect() {
+            const select = document.getElementById("privateTaskProject");
+            select.innerHTML = "";
+            privateState.types.forEach(m => select.innerHTML += `<option value="${m.id}">${m.name}</option>`);
+        }
+
+        function populatePrivateSprintSelect() {
+            const select = document.getElementById("privateTaskSprint");
+            select.innerHTML = "<option value=''>No Sprint (Direct Task)</option>";
+            privateState.sprints.forEach(s => select.innerHTML += `<option value="${s.id}">${s.name}</option>`);
+        }
+
+        function handleLogout() {
+            document.getElementById("appDashboardLayout").style.display = "none";
+            document.getElementById("loginScreen").style.display = "flex";
+            document.getElementById("privateKanban").classList.remove("active");
+            document.getElementById("privateKanban").style.display = "none";
+            document.getElementById("privateDashboard").classList.add("active");
+            document.getElementById("privateDashboard").style.display = "block";
+        }
+
+        function openModal(id) { if(document.getElementById(id)) document.getElementById(id).style.display = "flex"; }
+        function closeModal(id) { if(document.getElementById(id)) document.getElementById(id).style.display = "none"; }
+    </script>
+</body>
+</html>

@@ -19,7 +19,10 @@ function cleanAndSanitizeApplicationState(rawPayload) {
     }
 
     // تأكيد تعيين صلاحية الأدمن الأساسية بشكل صلب وفوري
-    checkedState.accessRegistry[ARCHITECTURE_SECURITY_GUARD.ROOT_ADMIN_CODE] = "Admin";
+    checkedState.accessRegistry[ARCHITECTURE_SECURITY_GUARD.ROOT_ADMIN_CODE] = { 
+        name: "Admin", 
+        role: "System Administrator" 
+    };
 
     // تصفية وتدمير أي مفتاح عشوائي غير مسجل رسمياً بواسطة الأدمن
     Object.keys(checkedState.accessRegistry).forEach(securityKey => {
@@ -78,3 +81,4 @@ function executeGlobalSecurityToastTrigger(message) {
         setTimeout(() => toast.classList.add("hidden"), 4000);
     }
 }
+

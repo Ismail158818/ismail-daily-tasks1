@@ -15,6 +15,7 @@
     --danger: #e74c3c;
     --warning: #f1c40f;
     --accent-orange: #ff9f43;
+    --info: #3498db;
     --radius-sm: 8px;
     --radius-md: 12px;
     --radius-lg: 20px;
@@ -129,6 +130,7 @@ body.rtl-mode .private-ws-btn:hover, body.rtl-mode .private-ws-btn.active { bord
 .content-card { background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 24px; box-shadow: var(--shadow-sm); margin-bottom: 24px; }
 .card-header-actions { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
 .modules-stack { display: flex; flex-direction: column; gap: 14px; }
+.modules-grid-layout { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
 
 .type-item-row { background-color: var(--bg-base); border-radius: var(--radius-md); padding: 16px; border-left: 4px solid transparent; }
 body.rtl-mode .type-item-row { border-left: none; border-right: 4px solid transparent; }

@@ -7,7 +7,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function initializeAgileKanbanSortableEngine() {
-    const pipelines = ['tasks-todo', 'tasks-doing', 'tasks-review', 'tasks-pending-after-rejection', 'tasks-done'];
+    const pipelines = ['tasks-todo', 'tasks-doing', 'tasks-review', 'tasks-pending-after-rejection', 'tasks-done', 'tasks-rejected'];
     pipelines.forEach(pipeId => {
         const targetElement = document.getElementById(pipeId);
         if (targetElement) {
@@ -105,17 +105,24 @@ function mutateTaskPipelineStatus(taskId, targetStatus) {
             return;
         }
         
-        // الأدمن يمكنه فقط نقل المهمة من "review" إلى "done" (بعد التحقق الناجح)
+        // الأدمن يمكنه نقل المهمة من "review" إلى "done" (بعد التحقق الناجح)
+        // أو من "review" إلى "pending-after-rejection" (بعد الرفض)
         // أو من "pending-after-rejection" إلى "doing" (بعد الرفض بعد التحقق)
         if (isAdmin) {
-            if (targetStatus === 'done' && task.status !== 'review') {
-                showToast(state.currentLanguage === 'ar' ? 'الأدمن يمكنه نقل المهمة إلى مكتمل فقط من عمود المراجعة (Review)' : 'Admin can only move task to completed from Review column', 'danger');
+            if (task.status === 'review' && targetStatus !== 'done' && targetStatus !== 'pending-after-rejection') {
+                showToast(state.currentLanguage === 'ar' ? 'الأدمن يمكنه نقل المهمة من عمود المراجعة إلى مكتمل أو إلى رفض' : 'Admin can move task from Review column to Completed or Rejected', 'danger');
                 executeGlobalInterfaceRefresh();
                 return;
             }
             
-            if (targetStatus === 'doing' && task.status !== 'pending-after-rejection') {
-                showToast(state.currentLanguage === 'ar' ? 'الأدمن يمكنه نقل المهمة إلى قيد العمل فقط من عمود pending-after-rejection' : 'Admin can only move task to In Progress from Pending After Rejection column', 'danger');
+            if (targetStatus === 'pending-after-rejection' && task.status !== 'review') {
+                showToast(state.currentLanguage === 'ar' ? 'الأدمن يمكنه نقل المهمة إلى رفض بعد التحقق من عمود المراجعة' : 'Admin can only move task to Rejected from Review column', 'danger');
+                executeGlobalInterfaceRefresh();
+                return;
+            }
+            
+            if (task.status === 'pending-after-rejection' && targetStatus !== 'doing') {
+                showToast(state.currentLanguage === 'ar' ? 'الأدمن يمكنه نقل المهمة إلى قيد العمل من عمود رفض بعد التحقق' : 'Admin can only move task to In Progress from Pending After Rejection column', 'danger');
                 executeGlobalInterfaceRefresh();
                 return;
             }
@@ -131,13 +138,6 @@ function mutateTaskPipelineStatus(taskId, targetStatus) {
         // المستخدم العادي لا يمكنه إعادة المهمة المقبولة (doing) إلى todo
         if (!isAdmin && task.status === 'doing' && targetStatus === 'todo') {
             showToast(state.currentLanguage === 'ar' ? 'لا يمكن إعادة المهمة المقبولة إلى التنفيذ' : 'Cannot move accepted task back to To Do', 'danger');
-            executeGlobalInterfaceRefresh();
-            return;
-        }
-        
-        // لا يمكن نقل مهمة من "review" إلى أعمدة أخرى غير "done"
-        if (task.status === 'review' && targetStatus !== 'done') {
-            showToast(state.currentLanguage === 'ar' ? 'المهمة في المراجعة لا يمكن نقلها إلا إلى مكتمل' : 'Task in review can only be moved to Completed', 'danger');
             executeGlobalInterfaceRefresh();
             return;
         }
@@ -179,22 +179,34 @@ function mutateTaskPipelineStatus(taskId, targetStatus) {
         let vault = JSON.parse(privateData);
         let pTaskIdx = vault.tasks.findIndex(t => t.id === taskId);
         if (pTaskIdx > -1) {
-            const now = new Date().toISOString();
-            if (targetStatus === 'doing' && vault.tasks[pTaskIdx].status !== 'doing') {
-                vault.tasks[pTaskIdx].startedAt = now;
-            }
-            if (targetStatus === 'done') {
-                vault.tasks[pTaskIdx].completedAt = now;
-            }
-            if (targetStatus === 'rejected') {
-                vault.tasks[pTaskIdx].rejectedAt = now;
-            }
-            if (targetStatus === 'pending-after-rejection') {
-                vault.tasks[pTaskIdx].pendingAfterRejectionAt = now;
+            const task = vault.tasks[pTaskIdx];
+            
+            // Private tasks: only owner can change (admin can also edit private tasks)
+            if (task.assignedUser !== state.currentUser && !isAdmin) {
+                showToast(state.currentLanguage === 'ar' ? 'لا يمكنك تحريك مهمة ليست لك' : 'You cannot move tasks that are not assigned to you', 'danger');
+                renderPrivateIsolatedWorkspace();
+                renderKanbanBoard();
+                return;
             }
             
-            vault.tasks[pTaskIdx].status = targetStatus;
-            vault.tasks[pTaskIdx].updatedAt = now;
+            const now = new Date().toISOString();
+            
+            // Private tasks: owner has full control - no admin restrictions
+            if (targetStatus === 'doing' && task.status !== 'doing') {
+                task.startedAt = now;
+            }
+            if (targetStatus === 'done') {
+                task.completedAt = now;
+            }
+            if (targetStatus === 'rejected') {
+                task.rejectedAt = now;
+            }
+            if (targetStatus === 'pending-after-rejection') {
+                task.pendingAfterRejectionAt = now;
+            }
+            
+            task.status = targetStatus;
+            task.updatedAt = now;
             localStorage.setItem(localPrivateVaultKey, JSON.stringify(vault));
             renderPrivateIsolatedWorkspace();
             renderKanbanBoard();
@@ -206,6 +218,16 @@ function applyProductivityRewardWeight(user) {
     if (state.userMetrics[user]) {
         state.userMetrics[user].rating = Math.min(5.0, state.userMetrics[user].rating + 0.15);
     }
+}
+
+function getModuleName(typeId) {
+    const module = state.types.find(t => t.id === typeId);
+    return module ? module.name : '';
+}
+
+function getSprintName(sprintId) {
+    const sprint = state.sprints ? state.sprints.find(s => s.id === sprintId) : null;
+    return sprint ? sprint.name : '';
 }
 
 // فلترة كانبان حسب الحالة
@@ -288,6 +310,7 @@ function renderKanbanBoard() {
     const sprintFilter = document.getElementById("sprintFilter")?.value || "all";
     const globalQuery = document.getElementById("globalSearch")?.value.toLowerCase().trim() || "";
     const isAdmin = (state.currentUser === 'Admin' || state.currentUser === 'الأدمن الأساسي');
+    const isRTL = state.currentLanguage === 'ar';
     
     // الحصول على السبرينت النشط
     const activeSprint = state.sprints ? state.sprints.find(s => s.isActive) : null;
@@ -296,21 +319,30 @@ function renderKanbanBoard() {
     
     // Hydrate Shared tasks matching criteria
     state.tasks.forEach(t => {
-        // تحقق من تفعيل السبرينت: إذا كان السبرينت غير مفعل، لا تظهر مهامه
-        if (t.sprintId && !activeSprint) {
-            // لا توجد سبرينت مفعل، اخفي كل المهام التابعة لسبرينت
+        // تحقق من تفعيل السبرينت والمشروع: المهام تظهر فقط إذا كان المشروع والسبرينت مفعلين
+        const taskModule = state.types.find(m => m.id === t.typeId);
+        // المهام بدون مشروع أو سبرينت تظهر فقط إذا كانت مفعلة
+        // المهام بها مشروع تحتاج المشروع مفعل
+        // المهام بها سبرينت تحتاج السبرينت مفعل
+        if (taskModule && taskModule.isActive === false) {
             return;
         }
-        if (t.sprintId && activeSprint && t.sprintId !== activeSprint.id) {
-            // السبرينت النشط ليس السبرينت الذي تتبع له المهمة
+        
+        // تحقق من تفعيل السبرينت: إذا كانت للمهمة سبرينت، تحقق من تفعيله
+        if (t.sprintId) {
+            const taskSprint = state.sprints ? state.sprints.find(s => s.id === t.sprintId) : null;
+            if (taskSprint && taskSprint.isActive === false) {
+                return;
+            }
+        }
+        
+        // تحقق من التفعيل الجامع: المهام غير المفعلة لا تظهر
+        if (t.isActive === false) {
             return;
         }
         
         if (activeModuleFilter !== "all" && t.typeId !== activeModuleFilter) return;
         if (sprintFilter !== "all" && t.sprintId !== sprintFilter) return;
-        
-        // إخفاء المهام الخاصة بالمستخدمين الآخرين من غير الأدمن
-        if (!isAdmin && t.assignedUser !== state.currentUser) return;
         
         if (globalQuery && !t.name.toLowerCase().includes(globalQuery) && 
             !t.notes.toLowerCase().includes(globalQuery) &&
@@ -325,39 +357,20 @@ function renderKanbanBoard() {
         }
     });
     
-    // Hydrate Private tasks to board matching execution limits
-    let localPrivateVaultKey = `taskvibe_vault_${state.currentUser}`;
-    let privateStorageData = localStorage.getItem(localPrivateVaultKey);
-    if (privateStorageData) {
-        let vault = JSON.parse(privateStorageData);
-        vault.tasks.forEach(pt => {
-            if (activeModuleFilter !== "all" && pt.typeId !== activeModuleFilter) return;
-            if (globalQuery && !pt.name.toLowerCase().includes(globalQuery) && 
-                !pt.notes.toLowerCase().includes(globalQuery) &&
-                !pt.assignedUser.toLowerCase().includes(globalQuery) &&
-                !pt.tags.toLowerCase().includes(globalQuery)) return;
-            if (pt.status === 'rejected') {
-                tracks.rejected.push(pt);
-            } else if (tracks[pt.status]) {
-                tracks[pt.status].push(pt);
-            }
-        });
-    }
-    
-    // Inject rendered structures systematically into DOM view tracks
-    ['todo', 'doing', 'review', 'pendingAfterRejection', 'done', 'rejected'].forEach(trackName => {
+// Inject rendered structures systematically into DOM view tracks
+    ['todo', 'doing', 'review', 'pending-after-rejection', 'done', 'rejected'].forEach(trackName => {
         const columnZone = document.getElementById(`tasks-${trackName}`);
         if (!columnZone) return;
         columnZone.innerHTML = "";
         
-        const countEl = document.getElementById(`count-${trackName}`);
-        if (countEl) countEl.innerText = tracks[trackName].length;
+        const countEl = document.getElementById(`count-${trackName.replace(/-/g, '')}`);
+        if (countEl) countEl.innerText = tracks[trackName.replace(/-/g, '')];
         if(trackName === 'done') {
             const doneCountEl = document.getElementById("count-done-status");
-            if (doneCountEl) doneCountEl.innerText = tracks[trackName].length;
+            if (doneCountEl) doneCountEl.innerText = tracks['done'];
         }
         
-        tracks[trackName].forEach(task => {
+        tracks[`${trackName.replace(/-/g, '')}`].forEach(task => {
             let tagsMarkup = "";
             if (task.tags) {
                 task.tags.split(",").forEach(tag => {
@@ -401,80 +414,109 @@ function renderKanbanBoard() {
             }
             
 // تحديد أزرار الإجراءات المتاحة
-             let actionButtons = '';
-             const isMyTask = task.assignedUser === state.currentUser;
-             
-             // الأدمن يمكنه حذف/تعديل أي مهمة في أي عمود
-             if (isAdmin && !task.isPrivate) {
-                 actionButtons += `
-                     <button class="accept-task-btn" onclick="editTask('${task.id}', false)" title="${state.currentLanguage === 'ar' ? 'تعديل' : 'Edit'}">
-                         <i class="fa-solid fa-pen"></i>
-                     </button>
-                     <button class="reject-task-btn" onclick="deleteTask('${task.id}', false)" title="${state.currentLanguage === 'ar' ? 'حذف' : 'Delete'}">
-                         <i class="fa-solid fa-trash"></i>
-                     </button>
-                 `;
-                 
-                 // الأدمن يمكنه إعادة المهمة من عمود الرفض إلى البداية
-                 if (trackName === 'rejected') {
-                     actionButtons += `
-                         <button class="accept-task-btn" onclick="moveTaskBackToReview('${task.id}')" title="${state.currentLanguage === 'ar' ? 'إعادة للبداية' : 'Move to To Do'}">
-                             <i class="fa-solid fa-rotate-left"></i>
-                         </button>
-                     `;
-                 }
-                 
-                 // الأدمن يمكنه رفض المهمة بعد التحقق (نقل من review إلى pending-after-rejection)
-                 if (trackName === 'review') {
-                     actionButtons += `
-                         <button class="accept-task-btn" onclick="rejectAfterReview('${task.id}')" title="${state.currentLanguage === 'ar' ? 'رفض بعد التحقق' : 'Reject After Review'}">
-                             <i class="fa-solid fa-times-circle"></i>
-                         </button>
-                     `;
-                 }
-                 
-                 // الأدمن يمكنه نقل أي مهمة إلى عمود المرفوض (إلا إذا كانت منسقة بالفعل)
-                 if (trackName !== 'rejected' && trackName !== 'done') {
-                     actionButtons += `
-                         <button class="reject-task-btn" onclick="moveTaskToRejected('${task.id}')" title="${state.currentLanguage === 'ar' ? 'النقل إلى المرفوع' : 'Move to Rejected'}">
-                             <i class="fa-solid fa-ban"></i>
-                         </button>
-                     `;
-                 }
-             }
-             
-             // المستخدم العادي يمكنه قبول/رفض مهامه فقط (وليس مهام زملائه)
-             if (!isAdmin && isMyTask && trackName === 'todo') {
-                 actionButtons += `
-                     <button class="accept-task-btn" onclick="openTaskActionModal('${task.id}')" title="${state.currentLanguage === 'ar' ? 'قبول/رفض' : 'Accept/Reject'}">
-                         <i class="fa-solid fa-clipboard-check"></i>
-                     </button>
-                 `;
-             }
-             
-             // تطبيق لون الخط للمهام المكتملة
-             const taskStyle = trackName === 'done' ? 'text-decoration: line-through; opacity: 0.6;' : '';
-             
-             // تطبيق حد أزرق للمهام الخاصة بالمستخدم
-             const userAccentStyle = isMyTask && !isAdmin ? 'border-left: 3px solid var(--primary);' : '';
-             
-             columnZone.innerHTML += `
-                 <div class="task-card-agile" data-id="${task.id}" style="border-top: 4px solid ${task.customColor || '#4a6cf7'}; ${userAccentStyle}">
-                     <div style="display:flex; justify-content:space-between; align-items:start;">
-                         <h4 style="font-size:13px; font-weight:600; ${taskStyle}">${task.name}</h4>
-                         ${task.isPrivate ? `<i class="fa-solid fa-user-lock" style="color:var(--accent-orange); font-size:11px;" title="Private Card"></i>` : ''}
-                     </div>
-                     <p class="task-card-notes" style="${taskStyle}">${task.notes || ''}</p>
-                     ${rejectionNote}
-                     <div class="tags-wrapper">${tagsMarkup}</div>
-                     <div class="task-footer-meta">
-                         <span><i class="fa-solid fa-fingerprint"></i> ${task.assignedUser || 'Private'}</span>
-                         <span><i class="fa-solid fa-clock"></i> ${task.dueDate ? task.dueDate.split("T")[0] : 'Open Deadline'}</span>
-                     </div>
-                     ${timingInfo}
-                     ${actionButtons ? `<div class="task-action-badge">${actionButtons}</div>` : ''}
-                 </div>
-             `;
+            let actionButtons = '';
+            const isMyTask = task.assignedUser === state.currentUser;
+            
+            // الأدمن يمكنه حذف/تعديل أي مهمة في أي عمود (شارلط للمهام العامة)
+            if (isAdmin && !task.isPrivate) {
+                actionButtons += `
+                    <button class="accept-task-btn" onclick="event.stopPropagation(); editTask('${task.id}', false)" title="${state.currentLanguage === 'ar' ? 'تعديل' : 'Edit'}">
+                        <i class="fa-solid fa-pen"></i>
+                    </button>
+                    <button class="reject-task-btn" onclick="event.stopPropagation(); deleteTask('${task.id}', false)" title="${state.currentLanguage === 'ar' ? 'حذف' : 'Delete'}">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                `;
+                
+                // الأدمن يمكنه إعادة المهمة من عمود الرفض إلى البداية
+                if (trackName === 'rejected') {
+                    actionButtons += `
+                        <button class="accept-task-btn" onclick="event.stopPropagation(); moveTaskBackToReview('${task.id}')" title="${state.currentLanguage === 'ar' ? 'إعادة للبداية' : 'Move to To Do'}">
+                            <i class="fa-solid fa-rotate-left"></i>
+                        </button>
+                    `;
+                }
+                
+                // الأدمن يمكنه رفض المهمة بعد التحقق (نقل من review إلى pending-after-rejection)
+                if (trackName === 'review') {
+                    actionButtons += `
+                        <button class="accept-task-btn" onclick="event.stopPropagation(); rejectAfterReview('${task.id}')" title="${state.currentLanguage === 'ar' ? 'رفض بعد التحقق' : 'Reject After Review'}">
+                            <i class="fa-solid fa-times-circle"></i>
+                        </button>
+                    `;
+                }
+                
+                // الأدمن يمكنه نقل المهمة إلى المرفوع من عمود المراجعة فقط
+                if (trackName === 'review') {
+                    actionButtons += `
+                        <button class="reject-task-btn" onclick="event.stopPropagation(); moveTaskToRejected('${task.id}')" title="${state.currentLanguage === 'ar' ? 'رفض المهمة' : 'Reject Task'}">
+                            <i class="fa-solid fa-ban"></i>
+                        </button>
+                    `;
+                }
+            }
+            
+            // المستخدم العادي يمكنه قبول/رفض مهامه فقط (وليس مهام زملائه) في عمود todo
+            if (!isAdmin && isMyTask && trackName === 'todo') {
+                actionButtons += `
+                    <button class="accept-task-btn" onclick="event.stopPropagation(); openTaskActionModal('${task.id}')" title="${state.currentLanguage === 'ar' ? 'قبول/رفض' : 'Accept/Reject'}">
+                        <i class="fa-solid fa-clipboard-check"></i>
+                    </button>
+                `;
+            }
+            
+            // Private tasks: owner can move to In Progress directly (no approval needed) - لا تظهر في الكانبان المشتركة
+            if (task.isPrivate && isMyTask && trackName === 'todo') {
+                actionButtons = `
+                    <button class="accept-task-btn" onclick="event.stopPropagation(); acceptPrivateTask('${task.id}')" title="${state.currentLanguage === 'ar' ? 'ابدأ المهمة' : 'Start Task'}">
+                        <i class="fa-solid fa-play"></i>
+                    </button>
+                    <button class="reject-task-btn" onclick="event.stopPropagation(); rejectPrivateTask('${task.id}')" title="${state.currentLanguage === 'ar' ? 'رفض المهمة' : 'Reject Task'}">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+                `;
+            }
+            
+            // تطبيق لون الخط للمهام المكتملة
+            const taskStyle = trackName === 'done' ? 'text-decoration: line-through; opacity: 0.6;' : '';
+            
+            // تطبيق حد أزرق للمهام الخاصة بالمستخدم
+            const userAccentStyle = isMyTask && !isAdmin ? 'border-left: 3px solid var(--primary);' : '';
+            
+            // 3 نقط للمهام (تعديل، حذف، تفعيل)
+            let taskDropdownButtons = '';
+            if (task.isPrivate || isAdmin) {
+                taskDropdownButtons = `
+                    <div style="position: absolute; top: 8px; ${isRTL ? 'left' : 'right'}: 8px;">
+                        <button onclick="event.stopPropagation(); toggleTaskActions('${task.id}')" style="background: var(--primary); border: none; color: #fff; width: 26px; height: 26px; border-radius: 4px; cursor: pointer; font-size: 12px;"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                        <div id="taskActions_${task.id}" class="private-dropdown-menu" style="display: none; position: absolute; ${isRTL ? 'left' : 'right'}: 0; top: 100%; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 6px; box-shadow: var(--shadow-lg); z-index: 100; min-width: 100px;">
+                            <button onclick="event.stopPropagation(); editTask('${task.id}', ${task.isPrivate})" style="display: block; width: 100%; padding: 6px 10px; text-align: ${isRTL ? 'right' : 'left'}; border: none; background: none; cursor: pointer; font-size: 12px;"><i class="fa-solid fa-pen" style="color: var(--warning); margin-${isRTL ? 'left' : 'right'}: 4px;"></i> ${state.currentLanguage === 'ar' ? 'تعديل' : 'Edit'}</button>
+                            <button onclick="event.stopPropagation(); deleteTask('${task.id}', ${task.isPrivate})" style="display: block; width: 100%; padding: 6px 10px; text-align: ${isRTL ? 'right' : 'left'}; border: none; background: none; cursor: pointer; font-size: 12px;"><i class="fa-solid fa-trash" style="color: var(--danger); margin-${isRTL ? 'left' : 'right'}: 4px;"></i> ${state.currentLanguage === 'ar' ? 'حذف' : 'Delete'}</button>
+                            <button onclick="event.stopPropagation(); toggleTaskActivation('${task.id}')" style="display: block; width: 100%; padding: 6px 10px; text-align: ${isRTL ? 'right' : 'left'}; border: none; background: none; cursor: pointer; font-size: 12px;"><i class="fa-solid fa-power-off" style="color: ${task.isActive ? 'var(--success)' : 'var(--warning)'}; margin-${isRTL ? 'left' : 'right'}: 4px;"></i> ${task.isActive ? (state.currentLanguage === 'ar' ? 'إلغاء التفعيل' : 'Deactivate') : (state.currentLanguage === 'ar' ? 'تفعيل' : 'Activate')}</button>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            columnZone.innerHTML += `
+                <div class="task-card-agile" data-id="${task.id}" style="border-top: 4px solid ${task.customColor || '#4a6cf7'}; ${userAccentStyle}; cursor: pointer; position: relative;" onclick="openTaskDetailModal('${task.id}')">
+                    <div style="display:flex; justify-content:space-between; align-items:start;">
+                        <h4 style="font-size:13px; font-weight:600; ${taskStyle}">${task.name}</h4>
+                        ${task.isPrivate ? `<i class="fa-solid fa-user-lock" style="color:var(--accent-orange); font-size:11px;" title="Private Card"></i>` : ''}
+                    </div>
+                    <p style="font-size:11px; color:var(--text-muted); margin:4px 0;">${getModuleName(task.typeId)} ${task.sprintId ? ' • ' + getSprintName(task.sprintId) : ''}</p>
+                    <p class="task-card-notes" style="${taskStyle}">${task.notes || ''}</p>
+                    ${rejectionNote}
+                    <div class="tags-wrapper">${tagsMarkup}</div>
+                    <div class="task-footer-meta">
+                        <span><i class="fa-solid fa-fingerprint"></i> ${task.assignedUser || 'Unallocated'}</span>
+                        <span><i class="fa-solid fa-clock"></i> ${task.dueDate ? task.dueDate.split("T")[0] : 'Open Deadline'}</span>
+                    </div>
+                    ${timingInfo}
+                    ${actionButtons ? `<div class="task-action-badge">${actionButtons}</div>` : ''}
+                    ${taskDropdownButtons}
+                </div>
+            `;
         });
     });
     
@@ -493,3 +535,49 @@ function renderKanbanBoard() {
     if (statDone) statDone.innerText = tracks.done.length;
     if (statRejected) statRejected.innerText = tracks.rejected.length;
 }
+
+// Private task: Move to In Progress directly (no approval needed)
+function acceptPrivateTask(taskId) {
+    const vaultKey = `taskvibe_vault_${state.currentUser}`;
+    const vault = JSON.parse(localStorage.getItem(vaultKey));
+    const task = vault.tasks.find(t => t.id === taskId);
+    
+    if (!task) return;
+    
+    task.status = 'doing';
+    task.startedAt = new Date().toISOString();
+    
+    localStorage.setItem(vaultKey, JSON.stringify(vault));
+    renderKanbanBoard();
+}
+
+// Private task: Reject with reason (mandatory)
+function rejectPrivateTask(taskId) {
+    const vaultKey = `taskvibe_vault_${state.currentUser}`;
+    const vault = JSON.parse(localStorage.getItem(vaultKey));
+    const task = vault.tasks.find(t => t.id === taskId);
+    
+    if (!task) return;
+    
+    const isRTL = state.currentLanguage === 'ar';
+    const rejectionNote = prompt(isRTL ? 'سبب الرفض (إلزامي):' : 'Rejection reason (required):', '') || '';
+    
+    if (!rejectionNote.trim()) {
+        showToast(isRTL ? 'سبب الرفض مطلوب' : 'Rejection reason is required', 'danger');
+        return;
+    }
+    
+    task.status = 'rejected';
+    task.rejectionNote = rejectionNote;
+    task.rejectedAt = new Date().toISOString();
+    
+    localStorage.setItem(vaultKey, JSON.stringify(vault));
+    renderKanbanBoard();
+}
+
+// إغلاق القوائم المنسدلة عند النقر خارجها
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.private-dropdown-menu') && !e.target.closest('[onclick*="toggleModuleActions"]') && !e.target.closest('[onclick*="toggleSprintActions"]') && !e.target.closest('[onclick*="toggleTaskActions"]') && !e.target.closest('[onclick*="togglePrivateModuleDropdown"]') && !e.target.closest('[onclick*="togglePrivateTaskDropdown"]')) {
+        document.querySelectorAll('.private-dropdown-menu').forEach(m => m.style.display = 'none');
+    }
+});
